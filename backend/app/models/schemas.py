@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ─── Enums ────────────────────────────────────────────────────────────────────
@@ -100,10 +100,54 @@ class DeploymentPhase(BaseModel):
 
 # ─── Core schemas ─────────────────────────────────────────────────────────────
 
+# Blocked patterns — prompt injection, SQL injection, abuse
+_BLOCKED_PATTERNS = [
+    r"ignore (previous|above|all) instructions",
+    r"you are now", r"act as", r"jailbreak",
+    r"<script", r"select .* from", r"drop table",
+    r"system prompt", r"forget (everything|all)",
+]
+
+# Must contain at least one workflow-related keyword
+_WORKFLOW_KEYWORDS = [
+    "workflow", "process", "step", "task", "automate", "automation",
+    "staff", "team", "department", "manual", "review", "approve",
+    "verify", "submit", "request", "customer", "employee", "document",
+    "invoice", "order", "application", "form", "data", "report",
+    "schedule", "assign", "notify", "send", "check", "validate",
+    "handle", "manage", "operate", "hire", "onboard", "payment",
+    "claim", "admission", "register", "enroll", "purchase",
+]
+
+
 class WorkflowRequest(BaseModel):
     industry: IndustryEnum
-    monthly_volume: int = Field(gt=0)
-    description: str = Field(min_length=10, max_length=2000)
+    monthly_volume: int = Field(gt=0, le=10_000_000)
+    description: str = Field(min_length=30, max_length=2000)
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v: str) -> str:
+        import re
+        text = v.strip()
+        words = text.lower().split()
+
+        if len(words) < 5:
+            raise ValueError("Description must be at least 5 words describing a real workflow")
+
+        for pattern in _BLOCKED_PATTERNS:
+            if re.search(pattern, text.lower(), re.IGNORECASE):
+                raise ValueError("Description contains disallowed content")
+
+        if not any(kw in text.lower() for kw in _WORKFLOW_KEYWORDS):
+            raise ValueError(
+                "Please describe a real business workflow with tasks, steps, and what to automate."
+            )
+
+        if len(words) > 10 and len(set(words)) / len(words) < 0.3:
+            raise ValueError("Description appears to be repetitive or spam")
+
+        return text
 
 
 class WorkflowResponse(BaseModel):

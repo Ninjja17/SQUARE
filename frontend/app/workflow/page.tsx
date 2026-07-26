@@ -34,6 +34,18 @@ export default function WorkflowPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!description.trim()) return;
+
+    // Client-side validation
+    const words = description.trim().split(/\s+/);
+    if (words.length < 5) {
+      setError("Please describe your workflow in at least 5 words.");
+      return;
+    }
+    if (description.trim().length < 30) {
+      setError("Description is too short. Please provide more detail about your workflow.");
+      return;
+    }
+
     setLoading(true);
     setStatus("Analyzing your workflow with AI...");
     setError(null);
