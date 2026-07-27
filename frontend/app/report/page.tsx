@@ -37,9 +37,9 @@ export default function ReportPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const { workflowId, simulationDone } = getSession();
-    if (!workflowId || !simulationDone) {
-      router.push("/simulation");
+    const { workflowId } = getSession();
+    if (!workflowId) {
+      router.push("/workflow");
       return;
     }
     // Single orchestrated call — governance runs silently server-side

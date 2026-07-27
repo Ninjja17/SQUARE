@@ -84,10 +84,11 @@ async def prepare_report(req: ReportRequest):
 
     sim_raw = _sim_cache.get(wf_id)
     if not sim_raw:
-        raise HTTPException(
-            status_code=404,
-            detail="Simulation results not found — call POST /api/simulate/run first",
-        )
+        from app.services.simulation_engine import run_simulation
+        logger.info("Simulation results missing for %s, auto-executing simulation in prepare_report", wf_id)
+        sim_objs = await run_simulation(wf_id, ["happy_path"], agents_raw)
+        sim_raw = [s.model_dump(mode="json") for s in sim_objs]
+        _sim_cache[wf_id] = sim_raw
 
     try:
         agents      = [AgentResponse(**a) for a in agents_raw]
