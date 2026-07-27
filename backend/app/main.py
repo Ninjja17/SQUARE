@@ -13,7 +13,7 @@ from slowapi.util import get_remote_address
 
 from app.config import get_settings
 from app.middleware.session import SessionMiddleware
-from app.routers import agents, governance, report, risk, roi, simulate, workflow
+from app.routers import admin, agents, governance, report, risk, roi, simulate, workflow
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -37,6 +37,13 @@ async def lifespan(app: FastAPI):
         logger.info("ChromaDB embedding model pre-warmed")
     except Exception as exc:
         logger.warning("ChromaDB embedding pre-warm skipped: %s", exc)
+    # Seed compliance RAG collection
+    try:
+        from app.db.compliance_rag import _get_compliance_collection
+        col = _get_compliance_collection()
+        logger.info("Compliance RAG ready — %d documents in collection", col.count())
+    except Exception as exc:
+        logger.warning("Compliance RAG init skipped: %s", exc)
     yield
     logger.info("Square backend shutting down")
 
@@ -61,7 +68,7 @@ app.add_middleware(
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-Admin-Token"],
 )
 
 # ─── Routers ──────────────────────────────────────────────────────────────────
@@ -72,11 +79,28 @@ app.include_router(governance.router)
 app.include_router(risk.router)
 app.include_router(roi.router)
 app.include_router(report.router)
+app.include_router(admin.router)
+
+
+# ─── Root ─────────────────────────────────────────────────────────────────────
+@app.get("/", tags=["health"], summary="Service info")
+async def root():
+    """Welcome endpoint — confirms the API is reachable and shows key links."""
+    return {
+        "service": "SQUARE API",
+        "description": "Enterprise Agent Engineering Platform — pre-deployment AI agent simulation & governance",
+        "status": "ok",
+        "demo_mode": settings.DEMO_MODE,
+        "docs": "/docs",
+        "health": "/health",
+        "version": "1.0.0",
+    }
 
 
 # ─── Health check ─────────────────────────────────────────────────────────────
-@app.get("/health", tags=["health"])
+@app.get("/health", tags=["health"], summary="Health check")
 async def health():
+    """Lightweight liveness probe — returns ok when the server is running."""
     return {"status": "ok", "demo_mode": settings.DEMO_MODE}
 
 

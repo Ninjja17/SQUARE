@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, type ExecutiveReport } from "@/lib/api";
+import { api, type ExecutiveReport, type PrepareReportResponse } from "@/lib/api";
 import { getSession, setSession } from "@/lib/session";
 import { Spinner } from "@/components/Spinner";
 import { ErrorBox } from "@/components/ErrorBox";
@@ -37,22 +37,18 @@ export default function ReportPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const { workflowId, governanceDone } = getSession();
-    if (!workflowId || !governanceDone) {
-      router.push("/governance");
+    const { workflowId, simulationDone } = getSession();
+    if (!workflowId || !simulationDone) {
+      router.push("/simulation");
       return;
     }
-    // Run risk + ROI analyses in parallel, then generate report
-    Promise.all([
-      api.analyzeRisk(workflowId),
-      api.analyzeROI(workflowId),
-    ])
-      .then(async () => {
-        const r = await api.generateReport(workflowId);
-        setReport(r);
-        setSession({ reportDone: true });
+    // Single orchestrated call — governance runs silently server-side
+    api.prepareReport(workflowId)
+      .then((res: PrepareReportResponse) => {
+        setReport(res.executive_report);
+        setSession({ governanceDone: true, reportDone: true });
       })
-      .catch((e) => setError(e.message))
+      .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -224,7 +220,7 @@ export default function ReportPage() {
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-2">
-            <Link href="/governance" className="btn-secondary">← Back</Link>
+            <Link href="/simulation" className="btn-secondary">← Back</Link>
             {workflowId && (
               <a
                 href={api.downloadPDF(workflowId)}

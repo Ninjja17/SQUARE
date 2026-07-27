@@ -147,7 +147,7 @@ export default function SimulationPage() {
 
           <div className="flex justify-between pt-2">
             <Link href="/agents" className="btn-secondary">← Back</Link>
-            <Link href="/governance" className="btn-primary">Check Agent Health →</Link>
+            <Link href="/report" className="btn-primary">Generate Executive Report →</Link>
           </div>
         </div>
       )}

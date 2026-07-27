@@ -1,6 +1,7 @@
 """Governance router — POST /api/governance/check."""
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, HTTPException
@@ -15,6 +16,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/governance", tags=["governance"])
 
 _gov_cache: dict[str, dict] = {}
+# Stores Orchestrate registration results keyed by workflow_id
+_orchestrate_cache: dict[str, list[dict]] = {}
 
 
 class GovernanceRequest(BaseModel):
@@ -40,4 +43,36 @@ async def check(req: GovernanceRequest):
         simulation_results=sim_results,
     )
     _gov_cache[req.workflow_id] = report.model_dump(mode="json")
+
+    # ── Register kept/promoted agents as Orchestrate skills (non-blocking) ──
+    # Build agent dicts enriched with governance decisions for the batch call
+    gov_by_id = {ga.agent_id: ga.decision for ga in report.agents}
+    agents_for_reg = []
+    for a in agents:
+        agents_for_reg.append({
+            "agent_id":      a.agent_id,
+            "agent_type":    a.agent_type.value,
+            "responsibility": a.responsibility,
+            "metrics":       a.metrics.model_dump(),
+            "decision":      gov_by_id.get(a.agent_id, "Keep"),
+        })
+
+    def _register():
+        from app.services.orchestrate_client import register_agents_batch
+        results = register_agents_batch(agents_for_reg, req.workflow_id)
+        _orchestrate_cache[req.workflow_id] = results
+
+    # Run in a thread so it never blocks the HTTP response
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, _register)
+
     return report
+
+
+@router.get("/{workflow_id}/orchestrate")
+async def get_orchestrate_registrations(workflow_id: str):
+    """Return Orchestrate skill registration results for a workflow."""
+    results = _orchestrate_cache.get(workflow_id)
+    if results is None:
+        raise HTTPException(status_code=404, detail="No Orchestrate registration data yet — run /check first")
+    return {"workflow_id": workflow_id, "registrations": results}

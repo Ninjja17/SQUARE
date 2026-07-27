@@ -127,6 +127,16 @@ export interface ExecutiveReport {
   go_no_go: "GO" | "PILOT_FIRST" | "NEEDS_CHANGES";
 }
 
+/** Response from POST /api/report/prepare — full one-call pipeline result. */
+export interface PrepareReportResponse {
+  workflow_id: string;
+  governance_summary: string;
+  risk_report: RiskReport;
+  roi_report: ROIReport;
+  executive_report: ExecutiveReport;
+  go_no_go: "GO" | "PILOT_FIRST" | "NEEDS_CHANGES";
+}
+
 // ─── API calls ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -164,6 +174,16 @@ export const api = {
       body: JSON.stringify({ workflow_id }),
     }),
 
+  /** One-call orchestration: governance → risk → ROI → report, all server-side. */
+  prepareReport: (workflow_id: string) =>
+    request<PrepareReportResponse>("/api/report/prepare", {
+      method: "POST",
+      body: JSON.stringify({ workflow_id }),
+    }),
+
   downloadPDF: (workflow_id: string) =>
     `${BASE}/api/report/${workflow_id}/pdf`,
+
+  getAgentGraph: (workflow_id: string) =>
+    request<{ mermaid: string; agent_count: number }>(`/api/agents/${workflow_id}/graph`),
 };

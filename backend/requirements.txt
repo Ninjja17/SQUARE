@@ -14,7 +14,6 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 slowapi==0.1.9
 python-multipart==0.0.9
-uuid==1.30
 reportlab==4.2.0
 starlette==0.37.2
 anyio==4.3.0

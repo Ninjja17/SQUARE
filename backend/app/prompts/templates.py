@@ -46,6 +46,9 @@ RISK_ANALYSIS_USER = """Workflow: {workflow_summary}
 Generated agents: {agent_list_json}
 Simulation results: {simulation_results_json}
 
+{compliance_context}
+
+Your recommendations must reference the specific compliance frameworks above where relevant.
 Return JSON: {{ "overall_score": float, "categories": [{{"name": str, "score": float, "justification": str}}], "recommendations": [str] }}
 """
 

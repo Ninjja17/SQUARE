@@ -236,6 +236,16 @@ class ExecutiveReport(BaseModel):
     go_no_go: GoNoGoEnum
 
 
+class PrepareReportResponse(BaseModel):
+    """Response model for POST /api/report/prepare — full one-call pipeline result."""
+    workflow_id: str
+    governance_summary: str
+    risk_report: RiskReport
+    roi_report: ROIReport
+    executive_report: ExecutiveReport
+    go_no_go: str
+
+
 # ─── Error shape ──────────────────────────────────────────────────────────────
 
 class ErrorDetail(BaseModel):

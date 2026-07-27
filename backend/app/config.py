@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     # App mode
     DEMO_MODE: bool = True  # if True, return seeded mock data instead of calling watsonx
 
+    # Admin dashboard (internal use only — never expose this value in responses)
+    ADMIN_DASHBOARD_TOKEN: str = "change-me-admin-token"
+
     class Config:
         env_file = str(_ENV_FILE)
         extra = "ignore"

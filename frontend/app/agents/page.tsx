@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, type Agent } from "@/lib/api";
@@ -19,12 +19,61 @@ const AGENT_ICONS: Record<string, string> = {
   Planner: "🗺️",
 };
 
+/** Renders a Mermaid diagram by injecting mermaid.js from CDN once. */
+function MermaidDiagram({ definition }: { definition: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!definition || !containerRef.current) return;
+
+    const render = () => {
+      if (!containerRef.current) return;
+      // @ts-expect-error mermaid is loaded as global via CDN script
+      window.mermaid?.run({ nodes: [containerRef.current] });
+    };
+
+    // @ts-expect-error mermaid is loaded as global via CDN script
+    if (typeof window !== "undefined" && window.mermaid) {
+      render();
+    } else {
+      // Inject CDN script once
+      const existing = document.getElementById("mermaid-cdn");
+      if (!existing) {
+        const script = document.createElement("script");
+        script.id = "mermaid-cdn";
+        script.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+        script.onload = () => {
+          // @ts-expect-error mermaid is loaded as global via CDN script
+          window.mermaid?.initialize({ startOnLoad: false, theme: "dark", darkMode: true });
+          render();
+        };
+        document.head.appendChild(script);
+      } else {
+        // Script loading — retry after short delay
+        setTimeout(render, 800);
+      }
+    }
+  }, [definition]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="mermaid w-full overflow-x-auto text-sm"
+      style={{ background: "transparent" }}
+    >
+      {definition}
+    </div>
+  );
+}
+
 export default function AgentsPage() {
   const router = useRouter();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workflowId, setWorkflowId] = useState<string | null>(null);
+  const [mermaidDef, setMermaidDef] = useState<string | null>(null);
+  const [showGraph, setShowGraph] = useState(false);
 
   useEffect(() => {
     const { workflowId: wfId } = getSession();
@@ -41,14 +90,19 @@ export default function AgentsPage() {
       .then((a) => {
         setAgents(a);
         setSession({ agentsGenerated: true });
+        // Fetch graph after agents are ready
+        return api.getAgentGraph(wfId);
       })
+      .then((g) => setMermaidDef(g.mermaid))
       .catch((e) => {
         // Try fetching already-generated agents as fallback
         api
           .getAgents(wfId)
           .then((a) => {
             setAgents(a);
+            return api.getAgentGraph(wfId);
           })
+          .then((g) => setMermaidDef(g.mermaid))
           .catch(() => setError(e.message));
       })
       .finally(() => setLoading(false));
@@ -56,6 +110,15 @@ export default function AgentsPage() {
 
   const reused = agents.filter((a) => a.source === "reused").length;
   const created = agents.filter((a) => a.source === "new").length;
+
+  const loadGraph = useCallback(async () => {
+    if (!workflowId) return;
+    try {
+      const g = await api.getAgentGraph(workflowId);
+      setMermaidDef(g.mermaid);
+      setShowGraph(true);
+    } catch { /* ignore */ }
+  }, [workflowId]);
 
   return (
     <div className="py-8 space-y-8">
@@ -112,6 +175,38 @@ export default function AgentsPage() {
               </MotionDiv>
             ))}
           </div>
+
+          {/* Agent Dependency Graph */}
+          {mermaidDef && (
+            <MotionDiv delay={0.4}>
+              <div className="card space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-semibold text-sm text-[#aaa] uppercase tracking-wider">
+                      Agent Dependency Graph
+                    </h2>
+                    <p className="text-xs text-[#555] mt-0.5">
+                      Visualises handoff order between agents in the pipeline.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowGraph((v) => !v);
+                      if (!showGraph) loadGraph();
+                    }}
+                    className="text-xs text-[#555] hover:text-white transition-colors border border-[#333] rounded px-3 py-1"
+                  >
+                    {showGraph ? "Hide" : "Show"} Graph
+                  </button>
+                </div>
+                {showGraph && (
+                  <div className="rounded-lg border border-[#222] bg-[#080808] p-4 min-h-[120px]">
+                    <MermaidDiagram definition={mermaidDef} />
+                  </div>
+                )}
+              </div>
+            </MotionDiv>
+          )}
 
           <div className="flex justify-between pt-2">
             <Link href="/workflow" className="btn-secondary">← Back</Link>

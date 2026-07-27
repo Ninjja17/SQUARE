@@ -10,7 +10,6 @@ const NAV_LINKS = [
   { href: "/agents", label: "Agents" },
   { href: "/simulation", label: "Simulation" },
   { href: "/simulation/live", label: "Live View" },
-  { href: "/governance", label: "Governance" },
   { href: "/report", label: "Report" },
 ];
 
