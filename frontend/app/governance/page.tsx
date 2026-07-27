@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, type GovernanceReport } from "@/lib/api";
+import { api, BASE, type GovernanceReport } from "@/lib/api";
 import { getSession, setSession } from "@/lib/session";
 import { Spinner } from "@/components/Spinner";
 import { ErrorBox } from "@/components/ErrorBox";
@@ -45,7 +45,7 @@ export default function GovernancePage() {
         const poll = (attempts: number) => {
           if (attempts <= 0) return;
           setTimeout(() => {
-            fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/governance/${workflowId}/orchestrate`, {
+            fetch(`${BASE}/api/governance/${workflowId}/orchestrate`, {
               credentials: "include",
             })
               .then((res) => (res.ok ? res.json() : null))

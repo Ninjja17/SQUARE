@@ -6,9 +6,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { Spinner } from "@/components/Spinner";
 import { ErrorBox } from "@/components/ErrorBox";
-import { Badge } from "@/components/Badge";
-
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { BASE } from "@/lib/api";
 
 interface TimelineStep {
   timestamp: string;
