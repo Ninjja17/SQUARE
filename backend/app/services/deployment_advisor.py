@@ -57,17 +57,21 @@ async def generate_deployment_plan(
     if settings.DEMO_MODE:
         data = MOCK_PLAN
     else:
-        from app.services.watsonx_client import call_granite_json
-        from app.prompts.templates import DEPLOYMENT_ADVISOR_SYSTEM, DEPLOYMENT_ADVISOR_USER
+        try:
+            from app.services.watsonx_client import call_granite_json
+            from app.prompts.templates import DEPLOYMENT_ADVISOR_SYSTEM, DEPLOYMENT_ADVISOR_USER
 
-        user_prompt = DEPLOYMENT_ADVISOR_USER.format(
-            risk_report_json=json.dumps(risk_report.model_dump()),
-            roi_report_json=json.dumps(roi_report.model_dump()),
-            simulation_results_json=json.dumps(
-                [r.model_dump() for r in simulation_results], default=str
-            ),
-        )
-        data = call_granite_json(DEPLOYMENT_ADVISOR_SYSTEM, user_prompt)
+            user_prompt = DEPLOYMENT_ADVISOR_USER.format(
+                risk_report_json=json.dumps(risk_report.model_dump()),
+                roi_report_json=json.dumps(roi_report.model_dump()),
+                simulation_results_json=json.dumps(
+                    [r.model_dump() for r in simulation_results], default=str
+                ),
+            )
+            data = call_granite_json(DEPLOYMENT_ADVISOR_SYSTEM, user_prompt)
+        except Exception as exc:
+            logger.warning("Groq AI deployment plan call failed (%s), using structured fallback rollout plan", exc)
+            data = MOCK_PLAN
 
     # Override go_no_go if risk is too high
     has_critical = any(r.status == SimulationStatusEnum.CRITICAL for r in simulation_results)
