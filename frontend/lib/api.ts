@@ -3,10 +3,8 @@
  * All endpoints match the API Endpoint List in the build brief.
  */
 
-const rawBase = (process.env.NEXT_PUBLIC_API_URL || "").trim();
-const BASE = rawBase
-  ? (rawBase.startsWith("http://") || rawBase.startsWith("https://") ? rawBase : `https://${rawBase}`).replace(/\/$/, "")
-  : "";
+const rawBase = (process.env.NEXT_PUBLIC_API_URL || "https://square-production-a6f7.up.railway.app").trim();
+const BASE = (rawBase.startsWith("http://") || rawBase.startsWith("https://") ? rawBase : `https://${rawBase}`).replace(/\/$/, "");
 
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const url = BASE ? `${BASE}${path}` : path;
