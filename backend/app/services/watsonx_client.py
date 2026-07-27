@@ -16,6 +16,7 @@ _client: Groq | None = None
 def _get_client() -> Groq:
     global _client
     if _client is None:
+        settings = get_settings()
         key = settings.GROQ_API_KEY
         if not key:
             raise ValueError("GROQ_API_KEY environment variable is missing or empty.")
@@ -26,6 +27,7 @@ def _get_client() -> Groq:
 def _call_granite(system_prompt: str, user_prompt: str) -> str:
     """Call Groq and return the raw text response."""
     try:
+        settings = get_settings()
         client = _get_client()
         response = client.chat.completions.create(
             model=settings.GROQ_MODEL,
