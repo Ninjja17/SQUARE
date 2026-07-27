@@ -17,10 +17,12 @@ def _get_client() -> Groq:
     global _client
     if _client is None:
         settings = get_settings()
-        key = settings.GROQ_API_KEY
+        key = (settings.GROQ_API_KEY or "").strip()
         if not key:
             raise ValueError("GROQ_API_KEY environment variable is missing or empty.")
-        _client = Groq(api_key=key)
+        import httpx
+        http_client = httpx.Client(timeout=30.0, follow_redirects=True)
+        _client = Groq(api_key=key, http_client=http_client)
     return _client
 
 
