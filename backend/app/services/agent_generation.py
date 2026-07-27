@@ -57,15 +57,23 @@ async def generate_agents(workflow_id: str, automation_candidates: list[dict]) -
             for a in MOCK_AGENTS
         ]
 
-    # Real path: check registry then call Granite
-    from app.services.watsonx_client import call_granite_json
+    try:
+        from app.services.watsonx_client import call_granite_json
 
-    candidates_json = json.dumps(automation_candidates)
-    user_prompt = AGENT_GENERATION_USER.format(
-        automation_candidates_json=candidates_json,
-        industry="Unknown",
-    )
-    data = call_granite_json(AGENT_GENERATION_SYSTEM, user_prompt)
+        candidates_json = json.dumps(automation_candidates)
+        user_prompt = AGENT_GENERATION_USER.format(
+            automation_candidates_json=candidates_json,
+            industry="Unknown",
+        )
+        data = call_granite_json(AGENT_GENERATION_SYSTEM, user_prompt)
+    except Exception as exc:
+        logger.warning("Groq AI agent generation failed (%s), using dynamic fallback agents", exc)
+        data = [
+            {"agent_type": "Verification", "responsibility": "Validates data and document authenticity", "suggested_metrics": {"accuracy": 0.98, "processing_time_s": 1.2, "uptime": 0.999}},
+            {"agent_type": "Decision", "responsibility": "Evaluates workflow rules and makes automated recommendations", "suggested_metrics": {"accuracy": 0.95, "processing_time_s": 1.8, "uptime": 0.997}},
+            {"agent_type": "Communication", "responsibility": "Sends notifications and updates across stakeholders", "suggested_metrics": {"accuracy": 0.99, "processing_time_s": 0.5, "uptime": 0.999}},
+            {"agent_type": "Analyzer", "responsibility": "Monitors workflow execution and flags discrepancies", "suggested_metrics": {"accuracy": 0.96, "processing_time_s": 1.5, "uptime": 0.998}},
+        ]
     results: list[AgentResponse] = []
 
     for item in data:

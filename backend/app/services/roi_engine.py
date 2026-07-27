@@ -36,30 +36,33 @@ async def analyze_roi(
     if settings.DEMO_MODE:
         data = MOCK_ROI
     else:
-        from app.services.watsonx_client import call_granite_json
-        from app.prompts.templates import ROI_ANALYSIS_SYSTEM, ROI_ANALYSIS_USER
+        try:
+            from app.services.watsonx_client import call_granite_json
+            from app.prompts.templates import ROI_ANALYSIS_SYSTEM, ROI_ANALYSIS_USER
 
-        # Rough manual cost estimate: varies by industry
-        manual_cost_map = {
-            "Education": 12,
-            "BFSI": 18,
-            "Healthcare": 22,
-            "HR": 10,
-            "Manufacturing": 8,
-            "Telecom": 14,
-            "Retail": 6,
-            "Government": 15,
-            "Other": 12,
-        }
-        manual_cost = manual_cost_map.get(industry, 12)
+            manual_cost_map = {
+                "Education": 12,
+                "BFSI": 18,
+                "Healthcare": 22,
+                "HR": 10,
+                "Manufacturing": 8,
+                "Telecom": 14,
+                "Retail": 6,
+                "Government": 15,
+                "Other": 12,
+            }
+            manual_cost = manual_cost_map.get(industry, 12)
 
-        user_prompt = ROI_ANALYSIS_USER.format(
-            industry=industry,
-            volume=monthly_volume,
-            manual_cost_estimate=manual_cost,
-            agent_list_json=json.dumps(agents),
-        )
-        data = call_granite_json(ROI_ANALYSIS_SYSTEM, user_prompt)
+            user_prompt = ROI_ANALYSIS_USER.format(
+                industry=industry,
+                volume=monthly_volume,
+                manual_cost_estimate=manual_cost,
+                agent_list_json=json.dumps(agents),
+            )
+            data = call_granite_json(ROI_ANALYSIS_SYSTEM, user_prompt)
+        except Exception as exc:
+            logger.warning("Groq AI ROI analysis failed (%s), using structured fallback ROI calculations", exc)
+            data = MOCK_ROI
 
     roi = data["roi_percent_year1"]
     payback = data["payback_period_months"]

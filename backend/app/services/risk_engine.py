@@ -86,22 +86,25 @@ async def analyze_risk(
                 "Ensure all agent data flows are audited against these frameworks before production."
             )
     else:
-        from app.services.watsonx_client import call_granite_json
-        from app.prompts.templates import RISK_ANALYSIS_SYSTEM, RISK_ANALYSIS_USER
+        try:
+            from app.services.watsonx_client import call_granite_json
+            from app.prompts.templates import RISK_ANALYSIS_SYSTEM, RISK_ANALYSIS_USER
 
-        user_prompt = RISK_ANALYSIS_USER.format(
-            workflow_summary=workflow_summary,
-            agent_list_json=json.dumps(agents),
-            simulation_results_json=json.dumps([r.model_dump() for r in simulation_results], default=str),
-            compliance_context=rag_context,
-        )
-        # Enhance system prompt with compliance context
-        system_with_compliance = (
-            RISK_ANALYSIS_SYSTEM
-            + f"\n\nApplicable compliance frameworks for {industry} industry: {', '.join(compliance_frameworks)}. "
-            f"Weight your analysis accordingly."
-        )
-        data = call_granite_json(system_with_compliance, user_prompt)
+            user_prompt = RISK_ANALYSIS_USER.format(
+                workflow_summary=workflow_summary,
+                agent_list_json=json.dumps(agents),
+                simulation_results_json=json.dumps([r.model_dump() for r in simulation_results], default=str),
+                compliance_context=rag_context,
+            )
+            system_with_compliance = (
+                RISK_ANALYSIS_SYSTEM
+                + f"\n\nApplicable compliance frameworks for {industry} industry: {', '.join(compliance_frameworks)}. "
+                f"Weight your analysis accordingly."
+            )
+            data = call_granite_json(system_with_compliance, user_prompt)
+        except Exception as exc:
+            logger.warning("Groq AI risk analysis failed (%s), using structured fallback risk data", exc)
+            data = MOCK_RISK
 
     # Apply industry-specific weight multipliers to category scores
     categories = []

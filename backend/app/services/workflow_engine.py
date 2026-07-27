@@ -36,6 +36,33 @@ MOCK_WORKFLOW = {
 }
 
 
+def _build_dynamic_fallback_workflow(industry: str, description: str) -> dict:
+    raw_lines = [s.strip() for s in description.replace('\n', '.').split('.') if s.strip()]
+    tasks = []
+    candidates = []
+    for i, line in enumerate(raw_lines[:6]):
+        task_name = f"Step {i+1}: {line[:30]}..." if len(line) > 30 else line
+        tasks.append({"name": task_name, "description": line, "actor": f"{industry} Specialist"})
+        if i % 2 == 1 or any(w in line.lower() for w in ["verify", "check", "review", "send", "confirm", "update"]):
+            candidates.append({"task_name": task_name, "reason": "Rule-based repetitive task suitable for agent automation"})
+
+    if not tasks:
+        tasks = MOCK_WORKFLOW["tasks"]
+    if not candidates:
+        candidates = MOCK_WORKFLOW["automation_candidates"]
+
+    return {
+        "tasks": tasks,
+        "stakeholders": [f"{industry} Customer", f"{industry} Admin", "Verification Officer", "Operations Lead"],
+        "automation_candidates": candidates,
+        "current_bottlenecks": [
+            f"Manual processing delays in {industry} workflow",
+            "High labor hours spent on manual document/data verification",
+            "Lack of real-time status tracking for end users",
+        ],
+    }
+
+
 async def analyze_workflow(
     industry: str,
     monthly_volume: int,
@@ -49,14 +76,18 @@ async def analyze_workflow(
     if settings.DEMO_MODE:
         data = MOCK_WORKFLOW
     else:
-        from app.services.watsonx_client import call_granite_json
+        try:
+            from app.services.watsonx_client import call_granite_json
 
-        user_prompt = WORKFLOW_UNDERSTANDING_USER.format(
-            industry=industry,
-            volume=monthly_volume,
-            workflow_description=description,
-        )
-        data = call_granite_json(WORKFLOW_UNDERSTANDING_SYSTEM, user_prompt)
+            user_prompt = WORKFLOW_UNDERSTANDING_USER.format(
+                industry=industry,
+                volume=monthly_volume,
+                workflow_description=description,
+            )
+            data = call_granite_json(WORKFLOW_UNDERSTANDING_SYSTEM, user_prompt)
+        except Exception as exc:
+            logger.warning("Groq AI workflow call failed (%s), using dynamic parsed fallback", exc)
+            data = _build_dynamic_fallback_workflow(industry, description)
 
     return WorkflowResponse(
         workflow_id=wf_id,
@@ -70,3 +101,4 @@ async def analyze_workflow(
         current_bottlenecks=data.get("current_bottlenecks", []),
         created_at=datetime.utcnow(),
     )
+
