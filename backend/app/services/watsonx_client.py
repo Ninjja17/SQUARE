@@ -10,15 +10,24 @@ from groq import Groq
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
+_client: Groq | None = None
 
-_client = Groq(api_key=settings.GROQ_API_KEY)
+
+def _get_client() -> Groq:
+    global _client
+    if _client is None:
+        key = settings.GROQ_API_KEY
+        if not key:
+            raise ValueError("GROQ_API_KEY environment variable is missing or empty.")
+        _client = Groq(api_key=key)
+    return _client
 
 
 def _call_granite(system_prompt: str, user_prompt: str) -> str:
     """Call Groq and return the raw text response."""
     try:
-        response = _client.chat.completions.create(
+        client = _get_client()
+        response = client.chat.completions.create(
             model=settings.GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
