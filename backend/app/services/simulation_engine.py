@@ -99,7 +99,11 @@ async def _llm_simulation(
         agents_json=json.dumps(agents),
         scenarios_json=json.dumps([s.value for s in scenarios]),
     )
-    data = call_granite_json(SIMULATION_SYSTEM, user_prompt)
+    try:
+        data = call_granite_json(SIMULATION_SYSTEM, user_prompt)
+    except Exception as exc:
+        logger.warning("Groq AI simulation call failed (%s), using scenario profiles fallback", exc)
+        data = []
 
     results: list[SimulationResult] = []
     if isinstance(data, list):
