@@ -3,10 +3,14 @@
  * All endpoints match the API Endpoint List in the build brief.
  */
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const rawBase = (process.env.NEXT_PUBLIC_API_URL || "").trim();
+const BASE = rawBase
+  ? (rawBase.startsWith("http://") || rawBase.startsWith("https://") ? rawBase : `https://${rawBase}`).replace(/\/$/, "")
+  : "";
 
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const url = BASE ? `${BASE}${path}` : path;
+  const res = await fetch(url, {
     ...opts,
     credentials: "include",
     headers: {
