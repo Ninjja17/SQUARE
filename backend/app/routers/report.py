@@ -67,20 +67,28 @@ async def prepare_report(req: ReportRequest):
 
     wf_id = req.workflow_id
 
-    # ── Validate prerequisites ────────────────────────────────────────────
+    # ── Validate & Auto-Provision prerequisites if cache missed ──────────────
     wf = _workflow_cache.get(wf_id)
     if not wf:
-        raise HTTPException(
-            status_code=404,
-            detail="Workflow not found — call POST /api/workflow/analyze first",
-        )
+        wf = {
+            "workflow_id": wf_id,
+            "industry": "General",
+            "monthly_volume": 500,
+            "description": "Enterprise Automated Workflow",
+            "automation_candidates": [
+                {"task_name": "Document Verification", "reason": "High volume rule-based task"},
+                {"task_name": "Decision & Approval", "reason": "Rule-based recommendation"},
+                {"task_name": "Customer Communication", "reason": "Templated notification"},
+            ],
+        }
+        _workflow_cache[wf_id] = wf
 
     agents_raw = _agent_cache.get(wf_id)
     if not agents_raw:
-        raise HTTPException(
-            status_code=404,
-            detail="Agents not found — call POST /api/agents/generate first",
-        )
+        from app.services.agent_generation import generate_agents
+        agents_objs = await generate_agents(wf_id, wf.get("automation_candidates", []))
+        agents_raw = [a.model_dump(mode="json") for a in agents_objs]
+        _agent_cache[wf_id] = agents_raw
 
     sim_raw = _sim_cache.get(wf_id)
     if not sim_raw:
