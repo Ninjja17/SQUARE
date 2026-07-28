@@ -18,25 +18,25 @@ SIMILARITY_THRESHOLD = 0.60  # cosine distance — lower = more similar; 0.6 is 
 MOCK_AGENTS = [
     {
         "agent_type": "Verification",
-        "responsibility": "Validates student documents including transcripts, ID, and certificates",
-        "source": "reused",
+        "responsibility": "Validates documents, records, and data quality for this specific workflow",
+        "source": "new",
         "metrics": {"accuracy": 0.98, "processing_time_s": 1.2, "uptime": 0.999},
     },
     {
         "agent_type": "Decision",
-        "responsibility": "Evaluates verified applications and recommends accept/reject/waitlist",
-        "source": "reused",
+        "responsibility": "Evaluates workflow rules and makes accept/reject/approve recommendations",
+        "source": "new",
         "metrics": {"accuracy": 0.95, "processing_time_s": 2.1, "uptime": 0.997},
     },
     {
         "agent_type": "Communication",
-        "responsibility": "Sends automated acceptance/rejection notifications and status updates",
-        "source": "reused",
+        "responsibility": "Sends automated notifications and status updates to users",
+        "source": "new",
         "metrics": {"accuracy": 0.998, "processing_time_s": 0.3, "uptime": 0.9999},
     },
     {
         "agent_type": "Analyzer",
-        "responsibility": "Analyzes application completeness and flags missing items for follow-up",
+        "responsibility": "Analyzes workflow inputs and flags missing items or discrepancies",
         "source": "new",
         "metrics": {"accuracy": 0.96, "processing_time_s": 1.8, "uptime": 0.998},
     },
@@ -80,22 +80,13 @@ async def generate_agents(workflow_id: str, automation_candidates: list[dict]) -
         agent_type = item.get("agent_type", "")
         task_desc = item.get("responsibility", item.get("task_name", ""))
 
-        # Strategy 1: Check if same agent_type already exists in registry (exact type match)
-        type_match = find_agent_by_type(agent_type)
-
-        # Strategy 2: Semantic similarity search
+        # Check semantic similarity search against custom stored agents in ChromaDB
+        # Use a strict similarity threshold (distance < 0.30) so workflow-specific agents
+        # are created fresh as NEW, and only exact pre-validated store matches are reused.
         similar = find_similar_agents(task_desc, top_k=1)
 
-        if type_match:
-            # Exact type match in registry — always reuse
-            source = AgentSourceEnum.REUSED
-            metrics = AgentMetrics(
-                accuracy=type_match["accuracy"],
-                processing_time_s=item.get("suggested_metrics", {}).get("processing_time_s", 1.5),
-                uptime=0.999,
-            )
-        elif similar and similar[0]["distance"] < SIMILARITY_THRESHOLD:
-            # Semantic match — reuse
+        if similar and len(similar) > 0 and similar[0].get("distance", 1.0) < 0.30:
+            # High semantic match — reuse stored agent from registry
             source = AgentSourceEnum.REUSED
             metrics = AgentMetrics(
                 accuracy=similar[0]["accuracy"],
@@ -103,10 +94,11 @@ async def generate_agents(workflow_id: str, automation_candidates: list[dict]) -
                 uptime=0.999,
             )
         else:
+            # Workflow-specific custom agent — created fresh for this workflow
             source = AgentSourceEnum.NEW
             sm = item.get("suggested_metrics", {})
             metrics = AgentMetrics(
-                accuracy=sm.get("accuracy", 0.90),
+                accuracy=sm.get("accuracy", 0.96),
                 processing_time_s=sm.get("processing_time_s", 2.0),
                 uptime=sm.get("uptime", 0.995),
             )
