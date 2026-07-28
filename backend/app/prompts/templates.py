@@ -21,16 +21,18 @@ Return JSON with:
 
 AGENT_GENERATION_SYSTEM = (
     "You are an AI agent architect. Given a list of tasks flagged for automation, "
-    "select the minimum set of agent types needed from this fixed template set: "
+    "select the minimal set of UNIQUE agent types from this fixed set: "
     "Analyzer, Verification, Decision, Communication, Risk, Planner. "
+    "Each agent type must appear AT MOST ONCE in your output. "
+    "If multiple tasks share a role (e.g. data ingestion and calculation), combine them under one agent or assign distinct appropriate types (e.g., Decision for calculations, Planner for reporting). "
     "Do not invent new agent types."
 )
 
 AGENT_GENERATION_USER = """Automation candidates: {automation_candidates_json}
 Industry: {industry}
 
-For each task return JSON array where each item has:
-{{ "task_name": str, "agent_type": str, "responsibility": str, "suggested_metrics": {{ "accuracy": float, "processing_time_s": float, "uptime": float }} }}
+Return a JSON array of UNIQUE agents (no duplicate agent_types). Each item:
+{{ "task_name": str, "agent_type": "Analyzer"|"Verification"|"Decision"|"Communication"|"Risk"|"Planner", "responsibility": str, "suggested_metrics": {{ "accuracy": float, "processing_time_s": float, "uptime": float }} }}
 """
 
 # ─────────────────────────────────────────────────────────────────────────────

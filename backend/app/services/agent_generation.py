@@ -74,10 +74,24 @@ async def generate_agents(workflow_id: str, automation_candidates: list[dict]) -
             {"agent_type": "Communication", "responsibility": "Sends notifications and updates across stakeholders", "suggested_metrics": {"accuracy": 0.99, "processing_time_s": 0.5, "uptime": 0.999}},
             {"agent_type": "Analyzer", "responsibility": "Monitors workflow execution and flags discrepancies", "suggested_metrics": {"accuracy": 0.96, "processing_time_s": 1.5, "uptime": 0.998}},
         ]
+    # Group/deduplicate by agent_type to ensure unique agent types per workflow
+    deduped_data: dict[str, dict] = {}
+    for item in data:
+        atype = item.get("agent_type", "")
+        if not atype:
+            continue
+        if atype not in deduped_data:
+            deduped_data[atype] = dict(item)
+        else:
+            # Combine responsibilities of duplicate types
+            existing_resp = deduped_data[atype].get("responsibility", "")
+            new_resp = item.get("responsibility", item.get("task_name", ""))
+            if new_resp and new_resp not in existing_resp:
+                deduped_data[atype]["responsibility"] = f"{existing_resp}; {new_resp}"
+
     results: list[AgentResponse] = []
 
-    for item in data:
-        agent_type = item.get("agent_type", "")
+    for atype, item in deduped_data.items():
         task_desc = item.get("responsibility", item.get("task_name", ""))
 
         # Check semantic similarity search against custom stored agents in ChromaDB
@@ -107,7 +121,7 @@ async def generate_agents(workflow_id: str, automation_candidates: list[dict]) -
             AgentResponse(
                 agent_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
-                agent_type=AgentTypeEnum(item["agent_type"]),
+                agent_type=AgentTypeEnum(atype),
                 responsibility=item.get("responsibility", ""),
                 source=source,
                 metrics=metrics,
