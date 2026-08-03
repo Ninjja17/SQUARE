@@ -6,11 +6,9 @@ import json
 import logging
 import random
 
-from app.config import get_settings
 from app.models.schemas import ScenarioEnum, SimulationResult, SimulationStatusEnum
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 SCENARIO_PROFILES = {
     ScenarioEnum.HAPPY_PATH: {
@@ -58,19 +56,15 @@ async def run_simulation(
     workflow_summary: str | None = None,
     agents: list[dict] | None = None,
 ) -> list[SimulationResult]:
-    if not settings.DEMO_MODE and workflow_summary and agents:
+    if workflow_summary and agents:
         return await _llm_simulation(workflow_id, scenarios, workflow_summary, agents)
 
-    # Demo mode or fallback: use random profiles
+    # Fallback: use deterministic scenario profiles
     results: list[SimulationResult] = []
     for scenario in scenarios:
-        if not settings.DEMO_MODE:
-            await asyncio.sleep(0.5)
-
         profile = SCENARIO_PROFILES.get(scenario, SCENARIO_PROFILES[ScenarioEnum.HAPPY_PATH])
         success_rate = round(random.uniform(*profile["success_rate_range"]), 3)
         avg_response_time = round(random.uniform(*profile["response_time_range"]), 2)
-
         results.append(
             SimulationResult(
                 workflow_id=workflow_id,

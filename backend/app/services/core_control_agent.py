@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 
-from app.config import get_settings
 from app.db.chroma_client import add_agent_to_registry
 from app.models.schemas import (
     AgentResponse,
@@ -15,12 +14,18 @@ from app.models.schemas import (
 )
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
+
+# ── Valid governance decision values (strict enum) ────────────────────────────
+#: These are the ONLY values that may appear in GovernanceAgentResult.decision.
+#: Explanation/justification is stored separately in .decision_explanation.
+DECISION_KEEP      = "Keep"
+DECISION_DISMISS   = "Dismiss"
+DECISION_PROMOTE   = "Promote to Registry"
 
 # Human oversight recommendations by agent type
 OVERSIGHT_RECOMMENDATIONS = {
-    "Decision": "Require human approval for decisions above confidence threshold 0.85",
-    "Risk": "Human review required for risk scores above 70",
+    "Decision":     "Require human approval for decisions above confidence threshold 0.85",
+    "Risk":         "Human review required for risk scores above 70",
     "Verification": "Spot-check 10% of automated verifications monthly",
 }
 DEFAULT_OVERSIGHT = "Quarterly performance audit recommended"
@@ -38,6 +43,7 @@ async def run_governance_check(
       - If agent type is generic and new → Promote to Registry
       - Otherwise → Keep
       - Generate human oversight recommendation and LLM justification
+      - decision is always a strict enum value; justification is stored separately
     """
     critical_or_warning_count = sum(
         1 for r in simulation_results
@@ -58,29 +64,26 @@ async def run_governance_check(
 
         # Determine decision — smarter dismiss using simulation results
         if not healthy:
-            decision = "Dismiss"
-            dismissed += 1
+            decision       = DECISION_DISMISS
+            dismissed     += 1
             updated_status = AgentStatusEnum.DISMISSED
         elif critical_or_warning_count > 2:
-            decision = "Dismiss"
-            healthy = False  # mark unhealthy — simulation scenarios indicate poor performance
-            dismissed += 1
+            decision       = DECISION_DISMISS
+            healthy        = False  # mark unhealthy — simulation scenarios indicate poor performance
+            dismissed     += 1
             updated_status = AgentStatusEnum.DISMISSED
         elif agent.agent_type.value in GENERIC_TYPES and agent.source.value == "new":
-            decision = "Promote to Registry"
-            promoted += 1
+            decision       = DECISION_PROMOTE
+            promoted      += 1
             updated_status = AgentStatusEnum.PROMOTED
-            if not settings.DEMO_MODE:
-                add_agent_to_registry(agent.agent_type.value, agent.responsibility, [])
+            add_agent_to_registry(agent.agent_type.value, agent.responsibility, [])
         else:
-            decision = "Keep"
-            kept += 1
+            decision       = DECISION_KEEP
+            kept          += 1
             updated_status = AgentStatusEnum.HEALTHY
 
-        # Generate LLM justification if not in demo mode
-        justification = ""
-        if not settings.DEMO_MODE:
-            justification = await _get_llm_justification(agent, decision, simulation_results)
+        # LLM justification — stored separately, never appended to decision string.
+        justification = await _get_llm_justification(agent, decision, simulation_results)
 
         results.append(
             GovernanceAgentResult(
@@ -88,7 +91,8 @@ async def run_governance_check(
                 agent_name=f"{agent.agent_type.value} Agent",
                 created=created,
                 healthy=healthy,
-                decision=decision + (f" — {justification}" if justification else ""),
+                decision=decision,                          # strict enum value only
+                decision_explanation=justification,         # explanation stored separately
                 human_oversight_recommendation=oversight,
             )
         )

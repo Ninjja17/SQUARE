@@ -1,7 +1,7 @@
 """SQLAlchemy ORM models + async session factory.
 
-In DEMO_MODE the database is never touched — the engine is only created
-when get_db() is actually called by a route that needs it.
+The engine is lazily created — only initialised when get_db() is first called
+by a route that needs it.
 """
 from __future__ import annotations
 

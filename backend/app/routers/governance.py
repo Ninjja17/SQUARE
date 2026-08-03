@@ -45,16 +45,21 @@ async def check(req: GovernanceRequest):
     _gov_cache[req.workflow_id] = report.model_dump(mode="json")
 
     # ── Register kept/promoted agents as Orchestrate skills (non-blocking) ──
-    # Build agent dicts enriched with governance decisions for the batch call
+    # Build agent dicts enriched with governance decisions for the batch call.
+    # decision field contains only the strict enum value (Keep | Dismiss | Promote to Registry).
     gov_by_id = {ga.agent_id: ga.decision for ga in report.agents}
     agents_for_reg = []
     for a in agents:
+        raw_decision = gov_by_id.get(a.agent_id, "Keep")
+        # Guard: strip any legacy " — explanation" suffix so batch registration
+        # can do a reliable string comparison against "Dismiss".
+        bare_decision = raw_decision.split(" — ")[0].strip()
         agents_for_reg.append({
-            "agent_id":      a.agent_id,
-            "agent_type":    a.agent_type.value,
-            "responsibility": a.responsibility,
-            "metrics":       a.metrics.model_dump(),
-            "decision":      gov_by_id.get(a.agent_id, "Keep"),
+            "agent_id":       a.agent_id,
+            "agent_type":     a.agent_type.value,
+            "responsibility":  a.responsibility,
+            "metrics":        a.metrics.model_dump(),
+            "decision":       bare_decision,
         })
 
     def _register():

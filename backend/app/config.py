@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     # IBM watsonx Orchestrate
-    ORCHESTRATE_INSTANCE_URL: str = ""
-    ORCHESTRATE_API_KEY: str = ""
+    ORCHESTRATE_INSTANCE_URL: str = "https://api.eu-de.watson-orchestrate.cloud.ibm.com/instances/7d62dfb2-5efa-421b-9ae3-80b98438b235"
+    ORCHESTRATE_API_KEY: str = "kpXlh6v3jGTZSdfXzjz_DWXr765X-73jd5ONHcIkgX46"
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/square"
@@ -39,8 +39,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_HOUR: int = 5
     MAX_WORKFLOW_DESCRIPTION_LENGTH: int = 2000
 
-    # App mode
-    DEMO_MODE: bool = True  # if True, return seeded mock data instead of calling watsonx
+    # Orchestrate lifecycle
+    # When True, all 6 core SQUARE skills AND agents are bootstrapped into Orchestrate on startup.
+    # Safe to leave True — bootstrap is idempotent (uses ensure/upsert logic).
+    AUTO_BOOTSTRAP_CORE_ORCHESTRATE: bool = True
 
     # Admin dashboard (internal use only — never expose this value in responses)
     ADMIN_DASHBOARD_TOKEN: str = "change-me-admin-token"

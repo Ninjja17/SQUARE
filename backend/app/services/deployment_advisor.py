@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import logging
 
-from app.config import get_settings
 from app.models.schemas import (
     DeploymentPhase,
     DeploymentPlan,
@@ -16,9 +15,8 @@ from app.models.schemas import (
 )
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
-MOCK_PLAN = {
+_FALLBACK_PLAN = {
     "phases": [
         {
             "name": "Phase 1 — Pilot",
@@ -41,8 +39,8 @@ MOCK_PLAN = {
     ],
     "go_no_go": "GO",
     "justification": (
-        "Risk score is moderate (38/100) and simulation Happy Path passed with >96% success rate. "
-        "ROI is compelling (265% Year 1). Recommend phased rollout starting with 10% pilot volume "
+        "Risk score is moderate and simulation Happy Path passed with high success rate. "
+        "ROI is compelling. Recommend phased rollout starting with 10% pilot volume "
         "under 80% human oversight to validate live performance before scaling."
     ),
 }
@@ -54,24 +52,21 @@ async def generate_deployment_plan(
     roi_report: ROIReport,
     simulation_results: list[SimulationResult],
 ) -> DeploymentPlan:
-    if settings.DEMO_MODE:
-        data = MOCK_PLAN
-    else:
-        try:
-            from app.services.watsonx_client import call_granite_json
-            from app.prompts.templates import DEPLOYMENT_ADVISOR_SYSTEM, DEPLOYMENT_ADVISOR_USER
+    try:
+        from app.services.watsonx_client import call_granite_json
+        from app.prompts.templates import DEPLOYMENT_ADVISOR_SYSTEM, DEPLOYMENT_ADVISOR_USER
 
-            user_prompt = DEPLOYMENT_ADVISOR_USER.format(
-                risk_report_json=json.dumps(risk_report.model_dump()),
-                roi_report_json=json.dumps(roi_report.model_dump()),
-                simulation_results_json=json.dumps(
-                    [r.model_dump() for r in simulation_results], default=str
-                ),
-            )
-            data = call_granite_json(DEPLOYMENT_ADVISOR_SYSTEM, user_prompt)
-        except Exception as exc:
-            logger.warning("Groq AI deployment plan call failed (%s), using structured fallback rollout plan", exc)
-            data = MOCK_PLAN
+        user_prompt = DEPLOYMENT_ADVISOR_USER.format(
+            risk_report_json=json.dumps(risk_report.model_dump()),
+            roi_report_json=json.dumps(roi_report.model_dump()),
+            simulation_results_json=json.dumps(
+                [r.model_dump() for r in simulation_results], default=str
+            ),
+        )
+        data = call_granite_json(DEPLOYMENT_ADVISOR_SYSTEM, user_prompt)
+    except Exception as exc:
+        logger.warning("Groq AI deployment plan call failed (%s), using structured fallback rollout plan", exc)
+        data = _FALLBACK_PLAN
 
     # Override go_no_go if risk is too high
     has_critical = any(r.status == SimulationStatusEnum.CRITICAL for r in simulation_results)

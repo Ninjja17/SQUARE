@@ -55,6 +55,7 @@ export interface Agent {
   source: "reused" | "new";
   metrics: AgentMetrics;
   status: string;
+  orchestrate_agent_id?: string | null;
 }
 
 export type ScenarioKey =

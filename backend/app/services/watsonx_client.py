@@ -26,8 +26,8 @@ def _get_client() -> Groq:
     return _client
 
 
-def _call_granite(system_prompt: str, user_prompt: str) -> str:
-    """Call Groq and return the raw text response."""
+def _call_groq(system_prompt: str, user_prompt: str) -> str:
+    """Call Groq API (Llama 3.3 70B) and return the raw text response."""
     try:
         settings = get_settings()
         client = _get_client()
@@ -47,9 +47,9 @@ def _call_granite(system_prompt: str, user_prompt: str) -> str:
         raise
 
 
-def call_granite_json(system_prompt: str, user_prompt: str) -> Any:
-    """Call Gemini and parse JSON from the response."""
-    raw = _call_granite(system_prompt, user_prompt)
+def call_groq_json(system_prompt: str, user_prompt: str) -> Any:
+    """Call Groq API (Llama 3.3 70B) and parse JSON from response."""
+    raw = _call_groq(system_prompt, user_prompt)
     # Extract JSON block if wrapped in markdown fences
     text = raw.strip()
     if "```" in text:
@@ -60,3 +60,9 @@ def call_granite_json(system_prompt: str, user_prompt: str) -> Any:
             block = block[4:]
         text = block.strip()
     return json.loads(text)
+
+
+# Backwards compatibility aliases for existing imports
+_call_granite = _call_groq
+call_granite_json = call_groq_json
+

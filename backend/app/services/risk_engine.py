@@ -1,4 +1,4 @@
-"""Risk Analysis Engine — scores security, compliance, operational risk via Granite.
+"""Risk Analysis Engine — scores security, compliance, operational risk via Groq (Llama 3.3 70B).
 
 Uses compliance RAG to inject real regulatory snippets into the analysis prompt,
 grounding the model's compliance scoring in actual rule text rather than guessing.
@@ -35,7 +35,7 @@ INDUSTRY_WEIGHTS = {
     "Government": {"Compliance": 1.5, "Security": 1.4, "Operational": 1.0, "Data Quality": 1.0, "Agent Dependency": 1.0},
 }
 
-MOCK_RISK = {
+_FALLBACK_RISK = {
     "overall_score": 38,
     "categories": [
         {"name": "Compliance", "score": 45, "justification": "Document handling requires FERPA/GDPR controls for student data."},
@@ -61,11 +61,9 @@ async def analyze_risk(
     simulation_results: list[SimulationResult],
     industry: str = "Other",
 ) -> RiskReport:
-    # Determine compliance framework for this industry
     compliance_frameworks = INDUSTRY_COMPLIANCE.get(industry, INDUSTRY_COMPLIANCE["Other"])
     weights = INDUSTRY_WEIGHTS.get(industry, {})
 
-    # Retrieve grounding compliance snippets from RAG (works in both modes for prompt building)
     try:
         from app.db.compliance_rag import retrieve_compliance_context
         rag_context = retrieve_compliance_context(industry, workflow_summary, top_k=4)
@@ -73,38 +71,31 @@ async def analyze_risk(
         logger.warning("Compliance RAG retrieval failed: %s", exc)
         rag_context = ""
 
-    if settings.DEMO_MODE:
-        data = MOCK_RISK
-        # Even in demo mode, enrich recommendations with RAG-grounded items
+    try:
+        from app.services.watsonx_client import call_granite_json
+        from app.prompts.templates import RISK_ANALYSIS_SYSTEM, RISK_ANALYSIS_USER
+
+        user_prompt = RISK_ANALYSIS_USER.format(
+            workflow_summary=workflow_summary,
+            agent_list_json=json.dumps(agents),
+            simulation_results_json=json.dumps([r.model_dump() for r in simulation_results], default=str),
+            compliance_context=rag_context,
+        )
+        system_with_compliance = (
+            RISK_ANALYSIS_SYSTEM
+            + f"\n\nApplicable compliance frameworks for {industry} industry: {', '.join(compliance_frameworks)}. "
+            f"Weight your analysis accordingly."
+        )
+        data = call_granite_json(system_with_compliance, user_prompt)
+    except Exception as exc:
+        logger.warning("Groq AI risk analysis failed (%s), using structured fallback risk data", exc)
+        data = dict(_FALLBACK_RISK)
         if rag_context:
-            data = dict(data)  # shallow copy so we don't mutate the module-level constant
-            data["recommendations"] = list(data["recommendations"])  # copy list too
-            # Append a RAG-sourced recommendation note
-            frameworks_str = ", ".join(compliance_frameworks)
+            data["recommendations"] = list(data["recommendations"])
             data["recommendations"].append(
-                f"Applicable regulations for {industry}: {frameworks_str}. "
+                f"Applicable regulations for {industry}: {', '.join(compliance_frameworks)}. "
                 "Ensure all agent data flows are audited against these frameworks before production."
             )
-    else:
-        try:
-            from app.services.watsonx_client import call_granite_json
-            from app.prompts.templates import RISK_ANALYSIS_SYSTEM, RISK_ANALYSIS_USER
-
-            user_prompt = RISK_ANALYSIS_USER.format(
-                workflow_summary=workflow_summary,
-                agent_list_json=json.dumps(agents),
-                simulation_results_json=json.dumps([r.model_dump() for r in simulation_results], default=str),
-                compliance_context=rag_context,
-            )
-            system_with_compliance = (
-                RISK_ANALYSIS_SYSTEM
-                + f"\n\nApplicable compliance frameworks for {industry} industry: {', '.join(compliance_frameworks)}. "
-                f"Weight your analysis accordingly."
-            )
-            data = call_granite_json(system_with_compliance, user_prompt)
-        except Exception as exc:
-            logger.warning("Groq AI risk analysis failed (%s), using structured fallback risk data", exc)
-            data = MOCK_RISK
 
     # Apply industry-specific weight multipliers to category scores
     categories = []

@@ -13,7 +13,7 @@ from slowapi.util import get_remote_address
 
 from app.config import get_settings
 from app.middleware.session import SessionMiddleware
-from app.routers import admin, agents, governance, report, risk, roi, simulate, workflow
+from app.routers import admin, agents, governance, orchestrate, report, risk, roi, simulate, workflow
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Square backend starting — DEMO_MODE=%s", settings.DEMO_MODE)
+    logger.info("Square backend starting")
     # Pre-warm in-memory agent registry
     try:
         from app.db.chroma_client import _registry
@@ -44,6 +44,32 @@ async def lifespan(app: FastAPI):
         logger.info("Compliance RAG ready — %d documents in collection", col.count())
     except Exception as exc:
         logger.warning("Compliance RAG init skipped: %s", exc)
+    # Auto-bootstrap core Orchestrate skills + agents if configured
+    if settings.AUTO_BOOTSTRAP_CORE_ORCHESTRATE:
+        try:
+            import asyncio
+            from app.services.orchestrate_client import bootstrap_core_skills, bootstrap_core_agents
+            loop = asyncio.get_event_loop()
+
+            # Skills bootstrap (Skills API)
+            skill_results = await loop.run_in_executor(None, bootstrap_core_skills)
+            created_s  = sum(1 for r in skill_results if r["status"] == "created")
+            existing_s = sum(1 for r in skill_results if r["status"] == "already_exists")
+            logger.info(
+                "Orchestrate core skills bootstrap: %d created, %d already existed",
+                created_s, existing_s,
+            )
+
+            # Agents bootstrap (Agents API)
+            agent_results = await loop.run_in_executor(None, bootstrap_core_agents)
+            created_a  = sum(1 for r in agent_results if r["status"] == "created")
+            existing_a = sum(1 for r in agent_results if r["status"] == "already_exists")
+            logger.info(
+                "Orchestrate core agents bootstrap: %d created, %d already existed",
+                created_a, existing_a,
+            )
+        except Exception as exc:
+            logger.warning("Orchestrate core bootstrap failed (non-fatal): %s", exc)
     yield
     logger.info("Square backend shutting down")
 
@@ -79,6 +105,7 @@ app.include_router(governance.router)
 app.include_router(risk.router)
 app.include_router(roi.router)
 app.include_router(report.router)
+app.include_router(orchestrate.router)
 app.include_router(admin.router)
 
 
@@ -90,7 +117,6 @@ async def root():
         "service": "SQUARE API",
         "description": "Enterprise Agent Engineering Platform — pre-deployment AI agent simulation & governance",
         "status": "ok",
-        "demo_mode": settings.DEMO_MODE,
         "docs": "/docs",
         "health": "/health",
         "version": "1.0.0",
@@ -101,7 +127,7 @@ async def root():
 @app.get("/health", tags=["health"], summary="Health check")
 async def health():
     """Lightweight liveness probe — returns ok when the server is running."""
-    return {"status": "ok", "demo_mode": settings.DEMO_MODE}
+    return {"status": "ok"}
 
 
 # ─── Global error handler ─────────────────────────────────────────────────────

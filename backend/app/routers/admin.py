@@ -127,7 +127,6 @@ async def overview(_: None = Depends(require_admin)) -> dict[str, Any]:
     return {
         "timestamp":   datetime.now(timezone.utc).isoformat(),
         "uptime_seconds": round(time.time() - _SERVER_START, 1),
-        "demo_mode":   settings.DEMO_MODE,
         "model":       settings.GROQ_MODEL,
         "provider":    "Groq (Llama 3.3 70B)",
         "counts": {
@@ -304,6 +303,5 @@ async def admin_health(_: None = Depends(require_admin)) -> dict[str, Any]:
         "status":    status,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "uptime_seconds": round(time.time() - _SERVER_START, 1),
-        "demo_mode": settings.DEMO_MODE,
         **checks,
     }

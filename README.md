@@ -219,35 +219,9 @@ npm run dev
 
 ---
 
-## 📸 Product Screenshots & Demo Gallery
+## 📸 Screenshots
 
-### 1. Landing & Workflow Input Page
-*Describe your enterprise business workflow in plain English.*
-<img src="01_home.png" alt="SQUARE Home Page" width="100%" />
-
-<br />
-
-### 2. AI Agent Team Generation
-*Automatically generate specialized AI agents and leverage reusable agents from the ChromaDB vector registry.*
-<img src="02_agents.png" alt="SQUARE Agent Generation Page" width="100%" />
-
-<br />
-
-### 3. Live 6-Scenario Simulation Timeline
-*Real-time interaction timeline stress-testing Happy Path, Agent Failure, High Workload, and API crashes.*
-<img src="03_simulation.png" alt="SQUARE Live Simulation Page" width="100%" />
-
-<br />
-
-### 4. Core Control Governance & IBM watsonx Integration
-*Prune redundant agents and auto-register approved agents directly into IBM watsonx Orchestrate as custom skills.*
-<img src="04_governance.png" alt="SQUARE Governance Page" width="100%" />
-
-<br />
-
-### 5. Executive Readiness & Risk Analysis Report
-*Industry-specific GDPR, HIPAA, and ISO 27001 risk scoring, financial ROI sensitivity, and Go/Pilot deployment decision.*
-<img src="05_report.png" alt="SQUARE Executive Readiness Report" width="100%" />
+> *Coming soon — run the app locally to see the full experience!*
 
 ---
 

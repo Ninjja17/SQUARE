@@ -171,6 +171,7 @@ class AgentResponse(BaseModel):
     source: AgentSourceEnum
     metrics: AgentMetrics = Field(default_factory=AgentMetrics)
     status: AgentStatusEnum = AgentStatusEnum.CREATED
+    orchestrate_agent_id: Optional[str] = None
 
 
 class SimulationRequest(BaseModel):
@@ -211,7 +212,8 @@ class GovernanceAgentResult(BaseModel):
     agent_name: str
     created: bool
     healthy: bool
-    decision: str  # Keep | Dismiss | Promote to Registry
+    decision: str             # strict enum: Keep | Dismiss | Promote to Registry
+    decision_explanation: str = ""  # LLM justification stored separately
     human_oversight_recommendation: str = ""
 
 

@@ -1,16 +1,14 @@
-"""ROI Analysis Engine — estimates savings, cost, payback via Granite."""
+"""ROI Analysis Engine — estimates savings, cost, payback via Groq (Llama 3.3 70B)."""
 from __future__ import annotations
 
 import json
 import logging
 
-from app.config import get_settings
 from app.models.schemas import ROIReport
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
-MOCK_ROI = {
+_FALLBACK_ROI = {
     "annual_savings": 480000,
     "implementation_cost": 120000,
     "ai_infra_cost_per_year": 36000,
@@ -26,6 +24,11 @@ MOCK_ROI = {
     ],
 }
 
+_MANUAL_COST_MAP = {
+    "Education": 12, "BFSI": 18, "Healthcare": 22, "HR": 10,
+    "Manufacturing": 8, "Telecom": 14, "Retail": 6, "Government": 15, "Other": 12,
+}
+
 
 async def analyze_roi(
     workflow_id: str,
@@ -33,36 +36,21 @@ async def analyze_roi(
     monthly_volume: int,
     agents: list[dict],
 ) -> ROIReport:
-    if settings.DEMO_MODE:
-        data = MOCK_ROI
-    else:
-        try:
-            from app.services.watsonx_client import call_granite_json
-            from app.prompts.templates import ROI_ANALYSIS_SYSTEM, ROI_ANALYSIS_USER
+    try:
+        from app.services.watsonx_client import call_granite_json
+        from app.prompts.templates import ROI_ANALYSIS_SYSTEM, ROI_ANALYSIS_USER
 
-            manual_cost_map = {
-                "Education": 12,
-                "BFSI": 18,
-                "Healthcare": 22,
-                "HR": 10,
-                "Manufacturing": 8,
-                "Telecom": 14,
-                "Retail": 6,
-                "Government": 15,
-                "Other": 12,
-            }
-            manual_cost = manual_cost_map.get(industry, 12)
-
-            user_prompt = ROI_ANALYSIS_USER.format(
-                industry=industry,
-                volume=monthly_volume,
-                manual_cost_estimate=manual_cost,
-                agent_list_json=json.dumps(agents),
-            )
-            data = call_granite_json(ROI_ANALYSIS_SYSTEM, user_prompt)
-        except Exception as exc:
-            logger.warning("Groq AI ROI analysis failed (%s), using structured fallback ROI calculations", exc)
-            data = MOCK_ROI
+        manual_cost = _MANUAL_COST_MAP.get(industry, 12)
+        user_prompt = ROI_ANALYSIS_USER.format(
+            industry=industry,
+            volume=monthly_volume,
+            manual_cost_estimate=manual_cost,
+            agent_list_json=json.dumps(agents),
+        )
+        data = call_granite_json(ROI_ANALYSIS_SYSTEM, user_prompt)
+    except Exception as exc:
+        logger.warning("Groq AI ROI analysis failed (%s), using structured fallback ROI calculations", exc)
+        data = _FALLBACK_ROI
 
     roi = data["roi_percent_year1"]
     payback = data["payback_period_months"]

@@ -7,14 +7,12 @@ import logging
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from app.config import get_settings
 from app.models.schemas import ScenarioEnum, SimulationRequest, SimulationResult
 from app.routers.agents import _agent_cache
 from app.routers.workflow import _cache as _workflow_cache
 from app.services.simulation_engine import run_simulation
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 router = APIRouter(prefix="/api/simulate", tags=["simulation"])
 
 _sim_cache: dict[str, list[dict]] = {}
@@ -102,9 +100,6 @@ async def simulate_narrative(req: NarrativeRequest):
         "outcome": f"Scenario {req.scenario.value} completed — agents processed workflow steps smoothly in 3.4 seconds.",
         "total_time": "3.4s",
     }
-
-    if settings.DEMO_MODE:
-        return fallback_narrative
 
     try:
         from app.services.watsonx_client import call_granite_json
