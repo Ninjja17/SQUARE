@@ -13,7 +13,7 @@ from slowapi.util import get_remote_address
 
 from app.config import get_settings
 from app.middleware.session import SessionMiddleware
-from app.routers import admin, agents, governance, orchestrate, report, risk, roi, simulate, workflow
+from app.routers import admin, agents, governance, mcp, orchestrate, report, risk, roi, simulate, workflow
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -107,6 +107,7 @@ app.include_router(roi.router)
 app.include_router(report.router)
 app.include_router(orchestrate.router)
 app.include_router(admin.router)
+app.include_router(mcp.router)
 
 
 # ─── Root ─────────────────────────────────────────────────────────────────────

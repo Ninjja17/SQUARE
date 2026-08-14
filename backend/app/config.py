@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # Safe to leave True — bootstrap is idempotent (uses ensure/upsert logic).
     AUTO_BOOTSTRAP_CORE_ORCHESTRATE: bool = True
 
+    # MCP (Model Context Protocol) Server settings
+    MCP_ENABLED: bool = True
+    MCP_API_KEY: str = ""  # optional API key for MCP endpoint security
+
     # Admin dashboard (internal use only — never expose this value in responses)
     ADMIN_DASHBOARD_TOKEN: str = "change-me-admin-token"
 
