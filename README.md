@@ -13,6 +13,8 @@
 
 > **"Describe your workflow. We'll build the AI workforce."**
 
+[![GitHub Stars](https://img.shields.io/github/stars/Ninjja17/SQUARE?style=for-the-badge&logo=github&color=gold)](https://github.com/Ninjja17/SQUARE/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/Ninjja17/SQUARE?style=for-the-badge&logo=github)](https://github.com/Ninjja17/SQUARE/network/members)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -22,9 +24,13 @@
 
 ---
 
+> ⭐ **If you find SQUARE useful, please consider giving it a star on GitHub!** It helps more developers discover pre-production AI workforce testing.
+
+---
+
 **SQUARE** turns a plain-English workflow description into a validated, cost/risk-scored, reusable AI agent team — before a single agent touches production.
 
-[🚀 Live Demo](#) • [📖 Documentation](#architecture) • [⚡ Quick Start](#local-setup)
+[🚀 Live Demo](#) • [📖 Architecture](#architecture) • [📸 Screenshots](#-product-screenshots--demo-gallery) • [⚡ Quick Start](#-local-setup) • [🤝 Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -248,6 +254,17 @@ npm run dev
 ### 5. Executive Readiness & Risk Analysis Report
 *Industry-specific GDPR, HIPAA, and ISO 27001 risk scoring, financial ROI sensitivity, and Go/Pilot deployment decision.*
 <img src=".github/assets/05_report.png" alt="SQUARE Executive Readiness Report" width="100%" />
+
+---
+
+## 🤝 Contributing & Community
+
+We welcome contributions to **SQUARE**! Whether you want to improve agent simulation scenarios, refine prompts, or enhance UI visualizations:
+
+- 📖 Check our [Contributing Guide](CONTRIBUTING.md) for local setup instructions.
+- 🐛 Found a bug? [Submit a Bug Report](https://github.com/Ninjja17/SQUARE/issues/new?template=bug_report.md).
+- 💡 Have a feature idea? [Propose a Feature](https://github.com/Ninjja17/SQUARE/issues/new?template=feature_request.md).
+- 🔒 Review our [Security Policy](SECURITY.md) for reporting security issues.
 
 ---
 
